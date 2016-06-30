@@ -199,7 +199,7 @@ def get_deployment_id_by_name(p_name):
         if deploy['name'] == p_name:
             return deploy['id']
 
-    logger.error('Deployment name ' + p_name + 'not found')
+    logger.error('Deployment name ' + p_name + ' not found')
     return ''
 
 
@@ -219,6 +219,10 @@ def delete_deployment_by_href(href):
     logger.info('Delete deployment')
     url_delete = href
 
+    if href == '':
+        logger.error('Bad URL')
+        return ''
+
     logger.info('URL: ' + url_delete)
     response = requests.delete(url_delete, auth=get_auth())
     status_code = response.status_code
@@ -232,114 +236,39 @@ def delete_deployment_by_href(href):
     return ''
 
 
-# Find Application version in the MMC Repository
-def get_file_from_repository(app_name, app_version):
+def action_deploy(action, href):
 
-    logger.info('Get Repo: ' + app_name + ' ' + app_version)
-    version_id = ''
-    headers = {'Content-Type': 'application/json'}
-    response = requests.get(URL_REPO, headers=headers, auth=('admin', 'admin'))
+    url = href + '/' + action
+    logger.info(url)
+    response = requests.post(url, auth=get_auth())
+    status_code = response.status_code
+    logger.info('status_code ' + str(status_code))
+
+    if status_code == 200:
+        text_data = response.text
+        return text_data
+
+    logger.error(response.text)
+    return ''
+
+
+def deploy(href):
     
-    #logger.info('Response: ' + response.text)
-    json_data = response.json()
-    logger.info(json.dumps(json_data, indent=2))
-    array = json_data['data']
-    for a in array:
-        if a['name'] == app_name:
-            versions = a['versions']
-            for version in versions:
-                if version['name'] == app_version:
-                    logger.info('Found app version: ' + version['id'])
-                    version_id = version['id']
-    return version_id
+    logger.info('Deploy')
+    action_deploy('deploy', href)
 
 
-# Delete application version from MMC Repository
-def delete_file(v):
+def redeploy(href):
 
-    logger.info('Delete: ' + v)
-    url_delete = URL_REPO + '/' + v
-
-    logger.info('URL: ' + url_delete)
-    response = requests.delete(url_delete, auth=('admin', 'admin'))
-    
-    text_response = response.text
-    logger.info(text_response)
-    # Pending to review when it fails to delete
-    #result = response.text
-    #logger('Delete response: ' + result)
-    #json_data = response.json()
-    #logger.info(json.dumps(json_data, indent=2))
+    logger.info('Redeploy')
+    action_deploy('redeploy', href)
 
 
-# Upload app version to MMC Repository
-def upload_file(f, n, v):
-    
-    logger.info('Upload: ' + n + ' ' + v)
-    # find app version
-    #versionId = get_repo(n, v)
+def undeploy(href):
 
-    #logger.info('versionId: ' + versionId)
-    #if versionId != '':
-    #    delete(versionId)
+    logger.info('Undeploy')
+    action_deploy('undeploy', href)
 
-    files = {'file': open(f, 'rb'), 'name': n, 'version' : v}
-    response = requests.post(URL_REPO, files=files, auth=('admin', 'admin'))
-    #logger.info('Response: ' + response.text)
-    json_data = response.json()
-
-    logger.info(json.dumps(json_data, indent=2))
-    # Pending to validate file upload
-    
-    app_id = json_data['applicationId']
-    return app_id
-
-
-#def create_deployment(app_name, app_version, server):
-
-#    logger.info('Create Deployment: ' + server + ' ' + app_name + ' ' + app_version)
-
-#    payload = { 'name' : app_name, 'servers' : [ server ], 'applications' : [ app_version ] }
-#    logger.info(json.dumps(payload, indent=2))
-
-#    response = requests.post(URL_DEPLOY, json=payload, auth=('admin', 'admin'))
-    
-#    logger.info('TEXT: ' + response.text)
-#    json_data = response.json()
-#    logger.info(json.dumps(json_data, indent=2))
-
-#    url = json_data['href']
-
-
-# def find_deployment():
-def deployment(filename, appname, appversion, server):
-    
-    server_id = get_server(server)
-    version_id = get_file_from_repository(appname, appversion)
-    #app_id = ''
-
-    if version_id != '':
-        logger.info('versionId: ' + version_id)
-        delete_file(version_id)
-
-    upload_file(filename, appname, appversion)
-
-    app_id = get_file_from_repository(appname, appversion)
-    
-    deployment_url = ''
-    if app_id != '':
-        deployment_url = create_deployment(appname, app_id, server_id)
-    
-    if deployment_url != '':
-        logger.info('Deploy URL: ' + deployment_url)
-        url = deployment_url + '/deploy'
-        logger.info('URL: ' + url)
-        response = requests.post(url, auth=('admin', 'admin'))
-        json_data = response.json()
-        logger.info('Deploy...')
-        logger.info(json.dumps(json_data, indent=2))
-
-    logger.info('End')
 
 #Execution
 #print 'Enter filename:'
@@ -351,38 +280,50 @@ def deployment(filename, appname, appversion, server):
 #print 'Enter server:'
 #server = raw_input()
 
-servers = get_servers()
-logger.info(json_pretty_print(servers))
+v_servers = get_servers()
+logger.info(json_pretty_print(v_servers))
 
-servers = get_servers_by_group('Development')
-logger.info(json_pretty_print(servers))
+v_servers = get_servers_by_group('Development')
+logger.info(json_pretty_print(v_servers))
 
-serverId = get_server_id_by_name('localhost')
-logger.info(serverId)
+v_serverId = get_server_id_by_name('localhost')
+logger.info(v_serverId)
 
-repositories = get_repositories()
-logger.info(json_pretty_print(repositories))
+v_repositories = get_repositories()
+logger.info(json_pretty_print(v_repositories))
 
-repository = get_repository_by_name_version('mule-example-hello', '3.4.2')
-logger.info(repository)
+v_repository = get_repository_by_name_version('mule-example-hello', '3.4.2')
+logger.info(v_repository)
 
-delete = repository_delete_file(repository)
-logger.info(delete)
+v_delete = repository_delete_file(v_repository)
+logger.info(v_delete)
 
-upload = repository_upload_file('mule-example-hello-3.4.2.zip', 'mule-example-hello', '3.4.2')
-logger.info(json_pretty_print(upload))
+v_upload = repository_upload_file('mule-example-hello-3.4.2.zip', 'mule-example-hello', '3.4.2')
+logger.info(json_pretty_print(v_upload))
 
-versionId = upload['versionId']
-deploy = create_deployment('deploy-mule-example-hello', versionId, serverId)
+v_deployments = get_deployments()
+logger.info(json_pretty_print(v_deployments))
 
-deployments = get_deployments()
-logger.info(json_pretty_print(deployments))
+v_deploymentId = get_deployment_id_by_name('deploy-mule-example-hello')
+logger.info(v_deploymentId)
 
-deploymentId = get_deployment_id_by_name('deploy-mule-example-hello')
-logger.info(deploymentId)
+v_deploymentHref = get_deployment_href_by_name('deploy-mule-example-hello')
+logger.info(v_deploymentHref)
 
-deploymentHref = get_deployment_href_by_name('deploy-mule-example-hello')
-logger.info(deploymentHref)
+v_deleteDeploy = delete_deployment_by_href(v_deploymentHref)
+logger.info(v_deleteDeploy)
 
-deleteDeploy = delete_deployment_by_href(deploymentHref)
-logger.info(deleteDeploy)
+v_versionId = v_upload['versionId']
+v_deploy = create_deployment('deploy-mule-example-hello', v_versionId, v_serverId)
+
+v_deploymentHref = get_deployment_href_by_name('deploy-mule-example-hello')
+logger.info(v_deploymentHref)
+
+v_deployit = deploy(v_deploymentHref)
+logger.info(v_deployit)
+
+v_redeployit = redeploy(v_deploymentHref)
+logger.info(v_redeployit)
+
+v_undeployit = undeploy(v_deploymentHref)
+logger.info(v_undeployit)
